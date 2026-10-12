@@ -181,3 +181,5 @@ CampusMate includes a full Progressive Web App manifest and offline service work
 - **On Android (Chrome):** Tap the 3 dots menu -> tap **"Install App"** or **"Add to Home Screen"**.
 - **On iPhone (Safari):** Tap the Share button (square with arrow) -> tap **"Add to Home Screen"**.
 - CampusMate will run as a native full-screen application with its custom app icon!
+#   C a m p u s M a t e  
+ 
