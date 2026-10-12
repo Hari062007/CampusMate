@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>CampusMate - Secure Classroom & Academic Access</title>
+    <!-- PWA & Mobile Meta Tags -->
+    <meta name="theme-color" content="#4f46e5">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="manifest" href="/manifest.json">
+    <link rel="icon" type="image/svg+xml" href="/icon.svg">
+    <link rel="apple-touch-icon" href="/icon.svg">
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#eef2ff',
+                            100: '#e0e7ff',
+                            500: '#6366f1',
+                            600: '#4f46e5',
+                            700: '#4338ca',
+                            800: '#3730a3',
+                            900: '#312e81'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Supabase JS Client via CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="/styles.css">
+</head>
+<body class="bg-slate-50 text-slate-900 font-sans min-h-screen flex flex-col antialiased selection:bg-brand-500 selection:text-white">
+
+    <!-- TOP NAVIGATION -->
+    <header class="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-slate-200 px-4 py-3 shadow-sm">
+        <div class="max-w-6xl mx-auto flex items-center justify-between">
+            <div class="flex items-center space-x-3 cursor-pointer" onclick="navigateTo('screen-classrooms')">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 to-indigo-500 flex items-center justify-center text-white shadow-md shadow-brand-500/20">
+                    <i data-lucide="graduation-cap" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold tracking-tight text-slate-900 flex items-center gap-1.5">
+                        CampusMate
+                        <span class="text-[10px] font-semibold uppercase tracking-wider bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-full border border-indigo-200">v2.0 Secure</span>
+                    </h1>
+                    <p class="text-xs text-slate-500 hidden sm:block">Invitation-Based Academic Access Control</p>
+                </div>
+            </div>
+
+            <!-- Header Actions / User Pill -->
+            <div id="header-user-section" class="flex items-center space-x-3 hidden">
+                <button onclick="openJoinModal()" class="hidden sm:inline-flex items-center space-x-1.5 text-xs font-medium bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg border border-slate-200 transition">
+                    <i data-lucide="link" class="w-3.5 h-3.5"></i>
+                    <span>Enter Invite Link</span>
+                </button>
+                <div class="relative">
+                    <button onclick="toggleNotificationsPanel()" class="relative p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition">
+                        <i data-lucide="bell" class="w-5 h-5"></i>
+                        <span id="notif-badge" class="hidden absolute top-1 right-1 w-2.5 h-2.5 bg-rose-500 rounded-full ring-2 ring-white"></span>
+                    </button>
+                    <!-- Notification Dropdown -->
+                    <div id="notif-dropdown" class="hidden absolute right-0 mt-2 w-80 sm:w-96 bg-white rounded-xl shadow-xl border border-slate-200 p-3 z-50">
+                        <div class="flex items-center justify-between pb-2 border-b border-slate-100 mb-2">
+                            <span class="text-xs font-bold uppercase tracking-wider text-slate-500">Notifications</span>
+                            <span id="notif-count-text" class="text-xs text-slate-400">0 unread</span>
+                        </div>
+                        <div id="notif-list" class="max-h-72 overflow-y-auto space-y-2 text-xs">
+                            <p class="text-slate-400 text-center py-4">No notifications yet.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <button onclick="navigateTo('screen-profile')" class="flex items-center space-x-2 pl-2 pr-3 py-1 bg-slate-100 hover:bg-slate-200 rounded-full border border-slate-200 transition">
+                    <div class="w-7 h-7 rounded-full bg-brand-600 text-white flex items-center justify-center font-bold text-xs" id="nav-user-avatar">?</div>
+                    <span class="text-xs font-semibold text-slate-700 max-w-[100px] truncate" id="nav-user-name">User</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- TOAST CONTAINER -->
+    <div id="toast-container" class="fixed bottom-20 sm:bottom-6 right-4 z-50 flex flex-col space-y-2 pointer-events-none"></div>
+
+    <!-- MAIN APP CONTAINER -->
+    <main class="flex-1 max-w-6xl w-full mx-auto px-4 py-6 mb-16 sm:mb-6">
+
+        <!-- ================================================================= -->
+        <!-- SCREEN 1: LOGIN / REGISTER -->
+        <!-- ================================================================= -->
+        <div id="screen-auth" class="view-screen max-w-md mx-auto pt-6">
+            <div class="bg-white rounded-2xl shadow-xl border border-slate-200/80 p-6 sm:p-8">
+                <div class="text-center mb-6">
+                    <div class="inline-flex p-3 rounded-2xl bg-indigo-50 text-indigo-600 mb-3 border border-indigo-100">
+                        <i data-lucide="shield-check" class="w-8 h-8"></i>
+                    </div>
+                    <h2 class="text-2xl font-bold text-slate-900 tracking-tight" id="auth-title">Welcome to CampusMate</h2>
+                    <p class="text-xs text-slate-500 mt-1" id="auth-subtitle">Secure verified classroom access for academic groups</p>
+                </div>
+
+                <!-- Auth Tabs -->
+                <div class="flex p-1 bg-slate-100 rounded-xl mb-6 border border-slate-200/60">
+                    <button id="tab-login-btn" onclick="switchAuthTab('login')" class="flex-1 py-2 text-xs font-semibold rounded-lg bg-white text-slate-900 shadow-sm transition">
+                        Sign In
+                    </button>
+                    <button id="tab-register-btn" onclick="switchAuthTab('register')" class="flex-1 py-2 text-xs font-semibold rounded-lg text-slate-600 hover:text-slate-900 transition">
+                        Create Account
+                    </button>
+                </div>
+
+                <!-- Registration Form (Strictly 3 profile fields + password) -->
+                <form id="form-register" class="space-y-4 hidden" onsubmit="handleRegister(event)">
+                    <div>
+                        <label class="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1">
+                            1. Full Name <span class="text-rose-500">*</span>
+                        </label>
+                        <input type="text" id="reg-name" required placeholder="e.g. John Doe" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500 text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1">
+                            2. College Email Address <span class="text-rose-500">*</span>
+                        </label>
+                        <input type="email" id="reg-email" required placeholder="e.g. student@college.edu" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500 text-sm">
+                        <p class="text-[11px] text-slate-400 mt-1">Must be a valid institutional/college email address</p>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1">
+                            3. Roll Number <span class="text-rose-500">*</span>
+                        </label>
+                        <input type="text" id="reg-roll" required placeholder="e.g. CS2026-042" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500 text-sm">
+                        <p class="text-[11px] text-slate-400 mt-1">Scoped to your classroom / department group</p>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1">
+                            Password <span class="text-rose-500">*</span>
+                        </label>
+                        <input type="password" id="reg-password" required minlength="6" placeholder="Min. 6 characters" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500 text-sm">
+                    </div>
+
+                    <div class="bg-indigo-50/70 border border-indigo-100 rounded-xl p-3 text-[11px] text-indigo-900 leading-relaxed flex items-start space-x-2">
+                        <i data-lucide="info" class="w-4 h-4 text-indigo-600 shrink-0 mt-0.5"></i>
+                        <span>No phone numbers, date of birth, or home address required. We strictly verify college identity via institutional email.</span>
+                    </div>
+
+                    <button type="submit" id="btn-submit-reg" class="w-full py-3 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-semibold text-sm shadow-lg shadow-brand-500/25 transition flex items-center justify-center space-x-2">
+                        <span>Register & Verify Email</span>
+                        <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                    </button>
+                </form>
+
+                <!-- Login Form -->
+                <form id="form-login" class="space-y-4" onsubmit="handleLogin(event)">
+                    <div>
+                        <label class="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1">
+                            College Email Address
+                        </label>
+                        <input type="email" id="login-email" required placeholder="student@college.edu" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500 text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1">
+                            Password
+                        </label>
+                        <input type="password" id="login-password" required placeholder="••••••••" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500 text-sm">
+                    </div>
+
+                    <button type="submit" id="btn-submit-login" class="w-full py-3 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-semibold text-sm shadow-lg shadow-brand-500/25 transition flex items-center justify-center space-x-2">
+                        <span>Sign In</span>
+                        <i data-lucide="log-in" class="w-4 h-4"></i>
+                    </button>
+                </form>
+
+                <!-- Quick Demo Accounts for Immediate Testing -->
+                <div class="mt-6 pt-5 border-t border-slate-100 text-center">
+                    <span class="text-[11px] uppercase tracking-wider font-semibold text-slate-400">Quick Test Credentials</span>
+                    <div class="mt-2 flex flex-wrap gap-2 justify-center">
+                        <button onclick="fillDemoCredentials('alice@college.edu', 'Password123!')" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 py-1 rounded-lg border border-slate-200">
+                            Student A (Alice - Owner)
+                        </button>
+                        <button onclick="fillDemoCredentials('bob@college.edu', 'Password123!')" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 py-1 rounded-lg border border-slate-200">
+                            Student B (Bob)
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================================================================= -->
+        <!-- SCREEN 2: MY CLASSROOMS -->
+        <!-- ================================================================= -->
+        <div id="screen-classrooms" class="view-screen hidden space-y-6">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
+                <div>
+                    <h2 class="text-xl font-bold text-slate-900">My Classrooms</h2>
+                    <p class="text-xs text-slate-500 mt-0.5">Enrolled classrooms and your owner-managed groups</p>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <button onclick="openJoinModal()" class="inline-flex items-center space-x-1.5 px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold border border-slate-200 transition">
+                        <i data-lucide="key" class="w-4 h-4"></i>
+                        <span>Join with Link</span>
+                    </button>
+                    <button onclick="navigateTo('screen-create-classroom')" class="inline-flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold shadow-md shadow-brand-500/20 transition">
+                        <i data-lucide="plus-circle" class="w-4 h-4"></i>
+                        <span>Create Classroom</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Classrooms Grid -->
+            <div id="classrooms-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <!-- Dynamic cards loaded via app.js -->
+            </div>
+        </div>
+
+        <!-- ================================================================= -->
+        <!-- SCREEN 3: CREATE CLASSROOM -->
+        <!-- ================================================================= -->
+        <div id="screen-create-classroom" class="view-screen hidden max-w-xl mx-auto">
+            <div class="bg-white rounded-2xl shadow-xl border border-slate-200 p-6 sm:p-8 space-y-6">
+                <div class="flex items-center space-x-3 pb-4 border-b border-slate-100">
+                    <button onclick="navigateTo('screen-classrooms')" class="p-2 hover:bg-slate-100 rounded-lg text-slate-500">
+                        <i data-lucide="arrow-left" class="w-5 h-5"></i>
+                    </button>
+                    <div>
+                        <h2 class="text-lg font-bold text-slate-900">Create New Classroom</h2>
+                        <p class="text-xs text-slate-500">You will automatically become the designated owner</p>
+                    </div>
+                </div>
+
+                <form onsubmit="handleCreateClassroom(event)" class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1">
+                            Classroom Name <span class="text-rose-500">*</span>
+                        </label>
+                        <input type="text" id="create-cls-name" required placeholder="e.g. CS401: Distributed Systems" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500 text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1">
+                            Department or Description (Optional)
+                        </label>
+                        <textarea id="create-cls-desc" rows="3" placeholder="e.g. Department of Computer Science & Engineering - Semester 5" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500 text-sm"></textarea>
+                    </div>
+
+                    <div class="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-800 leading-relaxed flex items-start space-x-2">
+                        <i data-lucide="shield-alert" class="w-4 h-4 text-amber-600 shrink-0 mt-0.5"></i>
+                        <span>Ownership policy: Each classroom has exactly one active owner who controls invitations, member approvals, and settings.</span>
+                    </div>
+
+                    <div class="flex items-center justify-end space-x-3 pt-3">
+                        <button type="button" onclick="navigateTo('screen-classrooms')" class="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 transition">
+                            Cancel
+                        </button>
+                        <button type="submit" class="px-5 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold shadow-md shadow-brand-500/20 transition">
+                            Create Classroom
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- ================================================================= -->
+        <!-- SCREEN 4: CLASSROOM INVITATION PREVIEW -->
+        <!-- ================================================================= -->
+        <div id="screen-invite-preview" class="view-screen hidden max-w-lg mx-auto pt-4">
+            <div class="bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
+                <div class="bg-gradient-to-tr from-brand-600 to-indigo-700 p-6 text-white text-center">
+                    <span class="inline-block text-[11px] font-bold uppercase tracking-wider bg-white/20 px-3 py-1 rounded-full mb-2">Classroom Invitation</span>
+                    <h2 class="text-2xl font-bold" id="preview-cls-name">Classroom Preview</h2>
+                    <p class="text-xs text-indigo-100 mt-1" id="preview-cls-desc"></p>
+                </div>
+
+                <div class="p-6 space-y-6">
+                    <!-- Owner info (Limited metadata) -->
+                    <div class="bg-slate-50 border border-slate-200/80 rounded-xl p-4 flex items-center justify-between">
+                        <div>
+                            <span class="text-[11px] font-semibold uppercase tracking-wider text-slate-400 block">Designated Classroom Owner</span>
+                            <span class="text-sm font-bold text-slate-800" id="preview-owner-name">Owner Name</span>
+                        </div>
+                        <span class="text-xs font-semibold text-indigo-600 bg-indigo-50 border border-indigo-200 px-2.5 py-1 rounded-lg flex items-center gap-1">
+                            <i data-lucide="crown" class="w-3.5 h-3.5"></i> Owner
+                        </span>
+                    </div>
+
+                    <!-- Security Alert -->
+                    <div class="bg-blue-50 border border-blue-200/80 rounded-xl p-3.5 text-xs text-blue-900 leading-relaxed flex items-start space-x-2.5">
+                        <i data-lucide="lock" class="w-4 h-4 text-blue-600 shrink-0 mt-0.5"></i>
+                        <div>
+                            <strong class="font-semibold">Access Controlled:</strong> Opening this invitation link does not grant immediate access. You must submit a join request, which must be approved by the classroom owner.
+                        </div>
+                    </div>
+
+                    <!-- Invitation Status Message / Actions -->
+                    <div id="preview-action-area" class="space-y-3 pt-2">
+                        <button onclick="handleRequestJoin()" id="btn-request-join" class="w-full py-3 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-semibold text-sm shadow-lg shadow-brand-500/25 transition flex items-center justify-center space-x-2">
+                            <i data-lucide="user-plus" class="w-4 h-4"></i>
+                            <span>Request to Join</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================================================================= -->
+        <!-- SCREEN 5: REQUEST PENDING -->
+        <!-- ================================================================= -->
+        <div id="screen-request-pending" class="view-screen hidden max-w-lg mx-auto pt-8">
+            <div class="bg-white rounded-2xl shadow-xl border border-slate-200 p-8 text-center space-y-5">
+                <div class="w-16 h-16 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mx-auto border-4 border-amber-50">
+                    <i data-lucide="clock" class="w-8 h-8"></i>
+                </div>
+                <div>
+                    <span class="inline-block text-[11px] font-bold uppercase tracking-wider text-amber-700 bg-amber-50 border border-amber-200 px-3 py-1 rounded-full mb-2">
+                        Status: Pending Approval
+                    </span>
+                    <h2 class="text-xl font-bold text-slate-900" id="pending-cls-name">Request Submitted</h2>
+                </div>
+
+                <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 text-xs text-slate-700 leading-relaxed">
+                    <p class="font-medium text-slate-900">"Your request has been sent. You can access this classroom after the owner approves your request."</p>
+                    <p class="text-slate-500 mt-2 text-[11px]">The classroom owner has been notified. Class assignments, posts, and member directories remain private until your request is approved.</p>
+                </div>
+
+                <div class="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
+                    <button onclick="navigateTo('screen-classrooms')" class="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition">
+                        Back to My Classrooms
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================================================================= -->
+        <!-- SCREEN 6: CLASSROOM OWNER DASHBOARD -->
+        <!-- ================================================================= -->
+        <div id="screen-owner-dashboard" class="view-screen hidden space-y-6">
+            <!-- Header -->
+            <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div class="flex items-center space-x-3">
+                    <button onclick="navigateTo('screen-classrooms')" class="p-2 hover:bg-slate-100 rounded-lg text-slate-500">
+                        <i data-lucide="arrow-left" class="w-5 h-5"></i>
+                    </button>
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <h2 class="text-xl font-bold text-slate-900" id="owner-dash-cls-name">Classroom Management</h2>
+                            <span class="text-[10px] font-bold uppercase bg-amber-50 text-amber-700 px-2 py-0.5 rounded border border-amber-200">Owner Screen</span>
+                        </div>
+                        <p class="text-xs text-slate-500" id="owner-dash-cls-desc"></p>
+                    </div>
+                </div>
+
+                <!-- Fast Nav -->
+                <div class="flex items-center space-x-2">
+                    <button onclick="openTimelineFromOwner()" class="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold border border-slate-200 transition flex items-center space-x-1.5">
+                        <i data-lucide="layout" class="w-4 h-4"></i>
+                        <span>Classroom Timeline</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Invitation Link Management Card -->
+            <div class="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-sm space-y-4">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+                    <div>
+                        <h3 class="text-sm font-bold text-slate-900 flex items-center gap-2">
+                            <i data-lucide="link" class="w-4 h-4 text-brand-600"></i>
+                            Classroom Invitation Link
+                        </h3>
+                        <p class="text-xs text-slate-500">Share with students so they can submit join requests</p>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <button onclick="openCreateInviteModal()" class="px-3.5 py-1.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold shadow-sm transition flex items-center space-x-1.5">
+                            <i data-lucide="sparkles" class="w-3.5 h-3.5"></i>
+                            <span>Create / New Link</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div id="active-invite-box" class="space-y-3">
+                    <!-- Loaded dynamically -->
+                </div>
+            </div>
+
+            <!-- Management Tabs: Join Requests vs Approved Members -->
+            <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+                <div class="flex border-b border-slate-200">
+                    <button id="tab-requests-btn" onclick="switchOwnerTab('requests')" class="flex-1 py-3 text-xs font-bold border-b-2 border-brand-600 text-brand-600 flex items-center justify-center space-x-2">
+                        <i data-lucide="user-check" class="w-4 h-4"></i>
+                        <span>Pending Join Requests</span>
+                        <span id="owner-pending-badge" class="ml-1 bg-amber-100 text-amber-800 text-[10px] px-2 py-0.5 rounded-full">0</span>
+                    </button>
+                    <button id="tab-members-btn" onclick="switchOwnerTab('members')" class="flex-1 py-3 text-xs font-bold border-b-2 border-transparent text-slate-500 hover:text-slate-800 flex items-center justify-center space-x-2">
+                        <i data-lucide="users" class="w-4 h-4"></i>
+                        <span>Approved Members</span>
+                        <span id="owner-members-badge" class="ml-1 bg-slate-100 text-slate-700 text-[10px] px-2 py-0.5 rounded-full">0</span>
+                    </button>
+                </div>
+
+                <!-- Tab 1: Pending Join Requests -->
+                <div id="owner-requests-panel" class="p-6">
+                    <div id="owner-requests-list" class="space-y-3">
+                        <!-- Loaded dynamically -->
+                    </div>
+                </div>
+
+                <!-- Tab 2: Approved Members -->
+                <div id="owner-members-panel" class="p-6 hidden">
+                    <div id="owner-members-list" class="space-y-3">
+                        <!-- Loaded dynamically -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================================================================= -->
+        <!-- SCREEN 8: CLASSROOM TIMELINE & POSTS -->
+        <!-- ================================================================= -->
+        <div id="screen-timeline" class="view-screen hidden space-y-6">
+            <!-- Timeline Header -->
+            <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div class="flex items-center space-x-3">
+                    <button onclick="navigateTo('screen-classrooms')" class="p-2 hover:bg-slate-100 rounded-lg text-slate-500">
+                        <i data-lucide="arrow-left" class="w-5 h-5"></i>
+                    </button>
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <h2 class="text-xl font-bold text-slate-900" id="timeline-cls-name">Classroom Timeline</h2>
+                            <span id="timeline-role-badge" class="text-[10px] font-bold uppercase px-2 py-0.5 rounded">Member</span>
+                        </div>
+                        <p class="text-xs text-slate-500" id="timeline-cls-desc"></p>
+                    </div>
+                </div>
+
+                <div class="flex items-center space-x-2">
+                    <button id="owner-dashboard-btn" onclick="openOwnerDashboardFromTimeline()" class="hidden px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold shadow-sm transition flex items-center space-x-1.5">
+                        <i data-lucide="shield" class="w-4 h-4"></i>
+                        <span>Owner Dashboard</span>
+                    </button>
+                    <button onclick="openNewPostModal()" class="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-semibold border border-slate-200 transition flex items-center space-x-1.5">
+                        <i data-lucide="message-square-plus" class="w-4 h-4"></i>
+                        <span>New Announcement</span>
+                    </button>
+                    <button onclick="openNewAssignmentModal()" class="px-3.5 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold shadow-md shadow-brand-500/20 transition flex items-center space-x-1.5">
+                        <i data-lucide="clipboard-list" class="w-4 h-4"></i>
+                        <span>Share Assignment</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Main Feed (Announcements & Discussions) -->
+                <div class="lg:col-span-2 space-y-4">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-sm font-bold text-slate-900 flex items-center gap-1.5">
+                            <i data-lucide="rss" class="w-4 h-4 text-brand-600"></i>
+                            Classroom Feed & Announcements
+                        </h3>
+                    </div>
+                    <div id="timeline-posts-list" class="space-y-4">
+                        <!-- Loaded dynamically -->
+                    </div>
+                </div>
+
+                <!-- Sidebar: Upcoming Shared Assignments & Directory -->
+                <div class="space-y-6">
+                    <!-- Assignments Card -->
+                    <div class="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-sm space-y-3">
+                        <div class="flex items-center justify-between pb-2 border-b border-slate-100">
+                            <h4 class="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+                                <i data-lucide="calendar" class="w-4 h-4 text-brand-600"></i>
+                                Shared Assignments
+                            </h4>
+                            <span id="timeline-assign-count" class="text-xs text-slate-400">0</span>
+                        </div>
+                        <div id="timeline-assignments-list" class="space-y-2.5 text-xs">
+                            <!-- Loaded dynamically -->
+                        </div>
+                    </div>
+
+                    <!-- Classroom Directory Card -->
+                    <div class="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-sm space-y-3">
+                        <div class="flex items-center justify-between pb-2 border-b border-slate-100">
+                            <h4 class="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+                                <i data-lucide="users" class="w-4 h-4 text-brand-600"></i>
+                                Classroom Members
+                            </h4>
+                            <span id="timeline-member-count" class="text-xs text-slate-400">0</span>
+                        </div>
+                        <div id="timeline-directory-list" class="space-y-2 max-h-60 overflow-y-auto text-xs">
+                            <!-- Loaded dynamically -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================================================================= -->
+        <!-- SCREEN 9: MY TASKS & DEADLINE REMINDERS -->
+        <!-- ================================================================= -->
+        <div id="screen-tasks" class="view-screen hidden space-y-6">
+            <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                    <h2 class="text-xl font-bold text-slate-900">My Academic Tasks</h2>
+                    <p class="text-xs text-slate-500 mt-0.5">Synced assignments from your approved classrooms and personal reminder schedule</p>
+                </div>
+                <!-- Filters -->
+                <div class="flex items-center space-x-2">
+                    <button onclick="filterTasks('all')" class="task-filter-btn active px-3 py-1.5 rounded-lg text-xs font-semibold bg-brand-50 text-brand-700 border border-brand-200">All</button>
+                    <button onclick="filterTasks('pending')" class="task-filter-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-slate-600">Pending</button>
+                    <button onclick="filterTasks('completed')" class="task-filter-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-slate-600">Completed</button>
+                </div>
+            </div>
+
+            <!-- Task List -->
+            <div id="user-tasks-list" class="space-y-3">
+                <!-- Loaded dynamically -->
+            </div>
+        </div>
+
+        <!-- ================================================================= -->
+        <!-- SCREEN 10: USER PROFILE & SETTINGS -->
+        <!-- ================================================================= -->
+        <div id="screen-profile" class="view-screen hidden max-w-xl mx-auto space-y-6">
+            <div class="bg-white rounded-2xl shadow-xl border border-slate-200/80 p-6 sm:p-8 space-y-6">
+                <div class="flex items-center space-x-4 pb-6 border-b border-slate-100">
+                    <div class="w-16 h-16 rounded-2xl bg-gradient-to-tr from-brand-600 to-indigo-600 text-white flex items-center justify-center font-bold text-2xl shadow-md" id="profile-avatar">
+                        U
+                    </div>
+                    <div>
+                        <h2 class="text-xl font-bold text-slate-900" id="profile-full-name">Full Name</h2>
+                        <span class="text-xs font-semibold text-brand-600 bg-brand-50 px-2.5 py-0.5 rounded-full border border-brand-200" id="profile-status-badge">Authenticated Student</span>
+                    </div>
+                </div>
+
+                <!-- Profile Fields (Strict 3 Fields) -->
+                <div class="space-y-4">
+                    <div class="bg-slate-50 border border-slate-200/80 rounded-xl p-3.5 flex items-center justify-between">
+                        <div>
+                            <span class="text-[11px] font-semibold uppercase tracking-wider text-slate-400 block">1. Full Name</span>
+                            <span class="text-sm font-semibold text-slate-800" id="profile-field-name">--</span>
+                        </div>
+                        <i data-lucide="user" class="w-5 h-5 text-slate-400"></i>
+                    </div>
+
+                    <div class="bg-slate-50 border border-slate-200/80 rounded-xl p-3.5 flex items-center justify-between">
+                        <div>
+                            <span class="text-[11px] font-semibold uppercase tracking-wider text-slate-400 block">2. College Email Address</span>
+                            <span class="text-sm font-semibold text-slate-800" id="profile-field-email">--</span>
+                        </div>
+                        <span class="text-xs text-emerald-600 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md font-semibold flex items-center gap-1">
+                            <i data-lucide="check-circle" class="w-3.5 h-3.5"></i> Verified
+                        </span>
+                    </div>
+
+                    <div class="bg-slate-50 border border-slate-200/80 rounded-xl p-3.5 flex items-center justify-between">
+                        <div>
+                            <span class="text-[11px] font-semibold uppercase tracking-wider text-slate-400 block">3. Roll Number</span>
+                            <span class="text-sm font-semibold text-slate-800" id="profile-field-roll">--</span>
+                        </div>
+                        <i data-lucide="badge-check" class="w-5 h-5 text-slate-400"></i>
+                    </div>
+                </div>
+
+                <!-- Reminder & Notification Preferences -->
+                <div class="pt-4 border-t border-slate-100 space-y-4">
+                    <h3 class="text-xs font-bold uppercase tracking-wider text-slate-600 flex items-center gap-1.5">
+                        <i data-lucide="bell-ring" class="w-4 h-4 text-brand-600"></i>
+                        Reminder Preferences
+                    </h3>
+
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <span class="text-xs font-semibold text-slate-800 block">Deadline Advance Reminders</span>
+                            <span class="text-[11px] text-slate-500">Hours before assignment due date</span>
+                        </div>
+                        <select id="pref-reminder-hours" class="text-xs px-3 py-1.5 rounded-lg border border-slate-200 bg-white">
+                            <option value="12">12 hours before</option>
+                            <option value="24" selected>24 hours before</option>
+                            <option value="48">48 hours before</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Logout -->
+                <div class="pt-4 border-t border-slate-100 flex items-center justify-between">
+                    <button onclick="handleLogout()" class="px-4 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-semibold border border-rose-200 transition flex items-center space-x-1.5">
+                        <i data-lucide="log-out" class="w-4 h-4"></i>
+                        <span>Sign Out</span>
+                    </button>
+                    <span class="text-[11px] text-slate-400">CampusMate Access Core</span>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- MOBILE BOTTOM NAVIGATION -->
+    <nav id="mobile-nav" class="sm:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 flex justify-around py-2.5 z-40 hidden shadow-lg">
+        <button onclick="navigateTo('screen-classrooms')" class="flex flex-col items-center text-xs font-semibold text-brand-600">
+            <i data-lucide="grid" class="w-5 h-5"></i>
+            <span class="text-[10px] mt-1">Classrooms</span>
+        </button>
+        <button onclick="navigateTo('screen-tasks')" class="flex flex-col items-center text-xs font-semibold text-slate-500 hover:text-brand-600">
+            <i data-lucide="check-square" class="w-5 h-5"></i>
+            <span class="text-[10px] mt-1">Tasks</span>
+        </button>
+        <button onclick="navigateTo('screen-profile')" class="flex flex-col items-center text-xs font-semibold text-slate-500 hover:text-brand-600">
+            <i data-lucide="user" class="w-5 h-5"></i>
+            <span class="text-[10px] mt-1">Profile</span>
+        </button>
+    </nav>
+
+    <!-- ================================================================= -->
+    <!-- MODALS -->
+    <!-- ================================================================= -->
+
+    <!-- Modal 1: Join with Code / Link -->
+    <div id="modal-join" class="modal-backdrop hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl">
+            <div class="flex items-center justify-between">
+                <h3 class="text-sm font-bold text-slate-900 flex items-center gap-1.5">
+                    <i data-lucide="link" class="w-4 h-4 text-brand-600"></i>
+                    Enter Invitation Link or Code
+                </h3>
+                <button onclick="closeModal('modal-join')" class="text-slate-400 hover:text-slate-600">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            <p class="text-xs text-slate-500">Paste the full invitation link or the secure invitation token provided by your classroom owner.</p>
+            <input type="text" id="modal-join-input" placeholder="e.g. http://localhost:5000/?invite=... or token" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-brand-500 outline-none">
+            <div class="flex justify-end space-x-2 pt-2">
+                <button onclick="closeModal('modal-join')" class="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100">Cancel</button>
+                <button onclick="submitJoinCode()" class="px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold">Preview & Request</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal 2: Create Invitation Link -->
+    <div id="modal-create-invite" class="modal-backdrop hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl">
+            <div class="flex items-center justify-between">
+                <h3 class="text-sm font-bold text-slate-900 flex items-center gap-1.5">
+                    <i data-lucide="key" class="w-4 h-4 text-brand-600"></i>
+                    Generate Invitation Link
+                </h3>
+                <button onclick="closeModal('modal-create-invite')" class="text-slate-400 hover:text-slate-600">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            <p class="text-xs text-slate-500">Creates a cryptographically secure, opaque token link. If an active link already exists, generating a new one will revoke the old one.</p>
+            <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Expiration Period</label>
+                <select id="invite-expire-select" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs bg-white">
+                    <option value="7">Expires in 7 days</option>
+                    <option value="14">Expires in 14 days</option>
+                    <option value="30">Expires in 30 days</option>
+                    <option value="">No expiration</option>
+                </select>
+            </div>
+            <div class="flex justify-end space-x-2 pt-2">
+                <button onclick="closeModal('modal-create-invite')" class="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100">Cancel</button>
+                <button onclick="confirmCreateInvitation()" class="px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold">Generate Link</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal 3: New Announcement Post -->
+    <div id="modal-new-post" class="modal-backdrop hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl">
+            <div class="flex items-center justify-between">
+                <h3 class="text-sm font-bold text-slate-900 flex items-center gap-1.5">
+                    <i data-lucide="message-square" class="w-4 h-4 text-brand-600"></i>
+                    New Classroom Announcement
+                </h3>
+                <button onclick="closeModal('modal-new-post')" class="text-slate-400 hover:text-slate-600">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            <form onsubmit="handleCreatePost(event)" class="space-y-3">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Title</label>
+                    <input type="text" id="post-title" required placeholder="e.g. Midterm Schedule Announcement" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Content</label>
+                    <textarea id="post-content" rows="4" required placeholder="Enter announcement details..." class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs"></textarea>
+                </div>
+                <div class="flex items-center space-x-2 pt-1" id="faculty-verify-container">
+                    <input type="checkbox" id="post-is-faculty" class="rounded text-brand-600">
+                    <label for="post-is-faculty" class="text-xs text-slate-600">Mark as Faculty Verified (requires authorized faculty credentials)</label>
+                </div>
+                <div class="flex justify-end space-x-2 pt-2">
+                    <button type="button" onclick="closeModal('modal-new-post')" class="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100">Cancel</button>
+                    <button type="submit" class="px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold">Publish Announcement</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal 4: New Assignment -->
+    <div id="modal-new-assignment" class="modal-backdrop hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl">
+            <div class="flex items-center justify-between">
+                <h3 class="text-sm font-bold text-slate-900 flex items-center gap-1.5">
+                    <i data-lucide="clipboard-list" class="w-4 h-4 text-brand-600"></i>
+                    Share Academic Assignment
+                </h3>
+                <button onclick="closeModal('modal-new-assignment')" class="text-slate-400 hover:text-slate-600">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            <form onsubmit="handleCreateAssignment(event)" class="space-y-3">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Subject Code / Name</label>
+                    <input type="text" id="assign-subject" required placeholder="e.g. CS401" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Assignment Title</label>
+                    <input type="text" id="assign-title" required placeholder="e.g. Lab 3: Multi-threading in Linux" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Due Date & Time</label>
+                    <input type="datetime-local" id="assign-due" required class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Description / Instructions</label>
+                    <textarea id="assign-desc" rows="3" placeholder="Submission criteria and links..." class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs"></textarea>
+                </div>
+                <div class="flex justify-end space-x-2 pt-2">
+                    <button type="button" onclick="closeModal('modal-new-assignment')" class="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100">Cancel</button>
+                    <button type="submit" class="px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold">Share & Sync to Tasks</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Application JavaScript -->
+    <script src="/app.js"></script>
+</body>
+</html>

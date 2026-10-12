@@ -1,0 +1,18 @@
+{
+  "name": "CampusMate - College Classroom Coordination",
+  "short_name": "CampusMate",
+  "description": "Secure, invitation-based academic coordination, assignments, deadlines, and task tracking for college students.",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0f172a",
+  "theme_color": "#4f46e5",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

@@ -1,0 +1,46 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# SQLite Database & Backups
+*.db
+*.db.bak
+campusmate.db
+campusmate.db.bak
+
+# Local Environment & Secrets
+.env
+.env.local
+.env.*.local
+*.env
+
+# Virtual Environments
+venv/
+.venv/
+env/
+ENV/
+
+# IDE & Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS Generated Files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs & Scratches
+*.log
+scratch/
+
+# CampusMate local secrets and databases
+.env
+.env.*
+!.env.example
+*.db
+*.sqlite3
+__pycache__/
+
