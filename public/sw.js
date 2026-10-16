@@ -1,12 +1,16 @@
 // CampusMate Progressive Web App Service Worker
-const CACHE_NAME = 'campusmate-shell-v1';
+const CACHE_NAME = 'campusmate-shell-v2';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
   '/styles.css',
   '/app.js',
   '/manifest.json',
-  '/icon.svg'
+  '/icon.svg',
+  '/icon-192.png',
+  '/icon-512.png',
+  '/icon-maskable-192.png',
+  '/icon-maskable-512.png'
 ];
 
 self.addEventListener('install', (event) => {
